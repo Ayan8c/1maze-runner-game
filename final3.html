@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Runner Round 1 - Interactive Skill Tree & Game Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    colors: {
+                        alpha: '#00f0ff',
+                        bravo: '#ff0055',
+                        charlie: '#00ff66',
+                        delta: '#ffbb00',
+                        darkbg: '#080c14',
+                        cardbg: '#0f172a'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #060911;
+            color: #f1f5f9;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(255, 0, 85, 0.05) 0%, transparent 40%),
+                linear-gradient(rgba(15, 23, 42, 0.6) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.6) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glow-alpha { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.8)); }
+        .glow-bravo { filter: drop-shadow(0 0 8px rgba(255, 0, 85, 0.8)); }
+        .glow-charlie { filter: drop-shadow(0 0 8px rgba(0, ff, 102, 0.8)); }
+        .glow-delta { filter: drop-shadow(0 0 8px rgba(255, 187, 0, 0.8)); }
+
+        .team-border-alpha { border-color: #00f0ff; }
+        .team-border-bravo { border-color: #ff0055; }
+        .team-border-charlie { border-color: #00ff66; }
+        .team-border-delta { border-color: #ffbb00; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.8); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+        .node-circle {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .node-circle:hover { transform: scale(1.25); }
+        
+        .path-line {
+            transition: stroke 0.5s ease, stroke-width 0.3s ease, stroke-dashoffset 0.5s ease;
+        }
+        .path-active {
+            stroke-dasharray: 8 4;
+            animation: dash 1.5s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -24; }
+        }
+    </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel sticky top-0 z-40 border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid fa-network-wired text-slate-950 text-xl font-black"></i>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-extrabold text-lg sm:text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-200 to-indigo-300">
+                        MAZE RUNNER <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/30 text-cyan-400 font-mono">ROUND 1</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-mono">Auto-Timer • Bulk Import/Export & Live Ops</p>
+                </div>
+            </div>
+
+            <!-- View Mode Switcher -->
+            <div class="flex items-center gap-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchView('game')" id="nav-btn-game" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 flex items-center gap-1.5">
+                    <i class="fa-solid fa-gamepad"></i> Game View
+                </button>
+                <button onclick="switchView('admin')" id="nav-btn-admin" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition text-slate-400 hover:text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-list"></i> Admin & Link Manager
+                </button>
+            </div>
+
+            <!-- Active Team Selector -->
+            <div class="flex items-center gap-3 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+                <span class="text-xs font-mono uppercase text-slate-400 px-2">Active Team:</span>
+                <button onclick="setActiveTeam('alpha')" id="btn-team-alpha" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span> Alpha
+                </button>
+                <button onclick="setActiveTeam('bravo')" id="btn-team-bravo" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 text-slate-400 hover:text-pink-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span> Bravo
+                </button>
+                <button onclick="setActiveTeam('charlie')" id="btn-team-charlie" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 text-slate-400 hover:text-emerald-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Charlie
+                </button>
+                <button onclick="setActiveTeam('delta')" id="btn-team-delta" class="px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 text-slate-400 hover:text-amber-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Delta
+                </button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="resetGameMatch()" class="px-3 py-1.5 text-xs font-mono rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> Reset Match
+                </button>
+                <button onclick="toggleIntelSheet()" class="px-3 py-1.5 text-xs font-orbitron rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-invoice"></i> Strategy Intel
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace with View Switcher -->
+    <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col">
+        
+        <!-- VIEW 1: GAME VIEW -->
+        <div id="view-game" class="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+            <!-- Left Column: Teams Dashboard & Scoreboard -->
+            <div class="lg:col-span-3 space-y-4 flex flex-col">
+                
+                <!-- Live Leaderboard -->
+                <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-orbitron text-sm font-bold tracking-wide text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-400"></i> LEADERBOARD
+                        </h2>
+                        <span id="total-nodes-badge" class="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400">NODES</span>
+                    </div>
+
+                    <div id="scoreboard-list" class="space-y-2.5"></div>
+                </div>
+
+                <!-- Active Team Stats & Streak Monitor -->
+                <div id="active-team-card" class="glass-panel rounded-2xl p-4 border border-cyan-500/30 flex-1 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-mono text-slate-400">CURRENT TEAM STATUS</span>
+                            <span id="active-team-badge" class="px-2 py-0.5 rounded text-[10px] font-orbitron font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">ALPHA</span>
+                        </div>
+
+                        <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 mb-3">
+                            <div class="text-xs text-slate-400 mb-1">Active Streak Multiplier</div>
+                            <div class="flex items-baseline justify-between">
+                                <span id="active-streak-val" class="font-orbitron text-2xl font-black text-cyan-400">1.0x</span>
+                                <span id="active-streak-count" class="text-xs font-mono text-slate-400">0 Consecutive</span>
+                            </div>
+                            <div class="grid grid-cols-6 gap-1 mt-2">
+                                <div id="st-1" class="h-1.5 rounded-full bg-cyan-500"></div>
+                                <div id="st-2" class="h-1.5 rounded-full bg-slate-800"></div>
+                                <div id="st-3" class="h-1.5 rounded-full bg-slate-800"></div>
+                                <div id="st-4" class="h-1.5 rounded-full bg-slate-800"></div>
+                                <div id="st-5" class="h-1.5 rounded-full bg-slate-800"></div>
+                                <div id="st-6" class="h-1.5 rounded-full bg-slate-800"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                            <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-[10px]">NODES CLEARED</span>
+                                <span id="active-nodes-count" class="font-bold text-slate-200 text-sm">0</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-[10px]">TIME BONUS</span>
+                                <span id="active-time-bonus" class="font-bold text-emerald-400 text-sm">+0 pts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Unlocked</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-600 inline-block"></span> Locked</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></span> 2 Starts</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> Bonus</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Visual Skill Tree Canvas -->
+            <div class="lg:col-span-9 flex flex-col">
+                <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex-1 flex flex-col relative overflow-hidden">
+                    
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-2 border-b border-slate-800/80">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
+                            <h2 class="font-orbitron font-bold text-sm text-slate-200 tracking-wide">
+                                2-START ROUTE MAP & BRANCHING SKILL TREE
+                            </h2>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs font-mono">
+                            <span class="px-2 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">2 START NODES</span>
+                            <span class="px-2 py-1 rounded bg-slate-900 text-purple-400 border border-slate-800">Custom Links Active</span>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full flex-1 min-h-[580px] bg-slate-950/60 rounded-xl border border-slate-900 overflow-auto p-2" id="canvas-container">
+                        <svg id="tree-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="min-width: 900px; min-height: 700px;">
+                            <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="3" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                            </defs>
+                            <g id="svg-paths"></g>
+                        </svg>
+                        <div id="tree-nodes-layer" class="relative w-full h-full min-w-[900px] min-h-[700px]"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ADMIN & Q&A MASTER TABLE + LINK MANAGER -->
+        <div id="view-admin" class="w-full hidden flex-1 flex flex-col glass-panel rounded-2xl p-4 border border-slate-800 space-y-6">
+            
+            <!-- Admin Header -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="font-orbitron font-bold text-base text-indigo-300 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list"></i> ADMIN CONTROL CENTER: QUESTIONS & PATH LINKS
+                    </h2>
+                    <p class="text-xs text-slate-400 font-mono">Bulk import/export JSON, add/edit questions, and make/break path connections dynamically.</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="addNewQuestionModal()" class="px-3 py-2 text-xs font-orbitron font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-plus"></i> Add Question
+                    </button>
+                    <button onclick="document.getElementById('import-file-input').click()" class="px-3 py-2 text-xs font-orbitron font-bold rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 transition flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+                        <i class="fa-solid fa-upload"></i> Import JSON
+                    </button>
+                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importQuestionsJSON(event)">
+                    <button onclick="exportQuestionsJSON()" class="px-3 py-2 text-xs font-orbitron font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                        <i class="fa-solid fa-download"></i> Export JSON
+                    </button>
+                    <button onclick="switchView('game')" class="px-3 py-2 text-xs font-mono rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-gamepad"></i> Back to Game
+                    </button>
+                </div>
+            </div>
+
+            <!-- Path Link Maker / Breaker Section -->
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                <h3 class="font-orbitron text-xs font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-code-branch"></i> MAKE & BREAK PATH LINKS (BRANCHING MANAGER)
+                </h3>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono text-slate-400">From Node ID:</span>
+                        <input type="number" id="link-from" placeholder="e.g. 1" class="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-cyan-400 w-24 font-mono focus:border-cyan-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono text-slate-400">To Unlock Node ID:</span>
+                        <input type="number" id="link-to" placeholder="e.g. 3" class="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-cyan-400 w-24 font-mono focus:border-cyan-500 focus:outline-none">
+                    </div>
+                    <button onclick="makePathLink()" class="px-4 py-1.5 text-xs font-orbitron font-bold rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 transition">
+                        + Make Link
+                    </button>
+                    <button onclick="breakPathLink()" class="px-4 py-1.5 text-xs font-orbitron font-bold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition">
+                        - Break Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- Questions Master Table -->
+            <div class="relative flex-1 max-h-[500px] overflow-y-auto rounded-xl border border-slate-900 bg-slate-950/60">
+                <table class="w-full text-left text-xs font-mono border-collapse">
+                    <thead class="bg-slate-900/90 text-indigo-300 uppercase sticky top-0 z-20 border-b border-slate-800">
+                        <tr>
+                            <th class="p-3 w-16">ID</th>
+                            <th class="p-3 w-28">Start?</th>
+                            <th class="p-3 w-32">Route</th>
+                            <th class="p-3 w-20">Diff</th>
+                            <th class="p-3 w-20">Time</th>
+                            <th class="p-3 w-24">Points</th>
+                            <th class="p-3">Question Text & Unlocks</th>
+                            <th class="p-3 w-36">Answer</th>
+                            <th class="p-3 w-20 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body" class="divide-y divide-slate-800/80 text-slate-300"></tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Node Question & Intel Modal Overlay -->
+    <div id="node-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-2xl rounded-2xl border border-cyan-500/30 overflow-hidden shadow-2xl animate-fade-in">
+            <div class="bg-slate-900/90 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <span id="modal-node-badge" class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-orbitron font-extrabold flex items-center justify-center text-lg">N1</span>
+                    <div>
+                        <h3 id="modal-node-title" class="font-orbitron font-bold text-slate-100 text-base">Node 1: Start 1</h3>
+                        <p id="modal-node-route" class="text-xs font-mono text-slate-400">Route 1 • Difficulty Tier 1</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase block">DIFFICULTY</span>
+                        <div id="modal-diff" class="font-orbitron font-bold text-amber-400 text-sm mt-0.5">Level 2</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase block">BASE PAYLOAD</span>
+                        <div id="modal-pts" class="font-orbitron font-bold text-cyan-400 text-sm mt-0.5">50 Points</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase block">TIME ALLOWED</span>
+                        <div id="modal-timer-disp" class="font-orbitron font-bold text-emerald-400 text-sm mt-0.5">45s</div>
+                    </div>
+                    <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-400 uppercase block">SPEED BONUS</span>
+                        <div id="modal-speed-bonus" class="font-orbitron font-bold text-purple-400 text-sm mt-0.5">+1 pt / sec</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <button id="btn-timer-toggle" onclick="toggleNodeTimer()" class="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-orbitron font-bold text-xs hover:bg-emerald-500/30 transition flex items-center gap-2">
+                            <i class="fa-solid fa-pause"></i> PAUSE TIMER
+                        </button>
+                        <button onclick="resetNodeTimer()" class="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+                            <i class="fa-solid fa-rotate"></i>
+                        </button>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-mono text-slate-400">REMAINING SECONDS</div>
+                        <div id="timer-count" class="font-orbitron text-2xl font-extrabold text-emerald-400">45s</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono text-cyan-400 font-semibold uppercase tracking-wider">QUESTION INTEL</span>
+                        <span id="modal-payload-tag" class="text-[10px] font-mono bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800">STANDARD NODE</span>
+                    </div>
+                    <p id="modal-question-text" class="text-slate-200 text-sm sm:text-base font-medium leading-relaxed">Loading...</p>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-xs font-mono text-slate-400 block">SUBMIT ANSWER FOR ACTIVE TEAM (<span id="modal-team-name" class="text-cyan-400 uppercase font-bold">ALPHA</span>)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="user-answer-input" placeholder="Type answer here..." class="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none font-mono">
+                        <button onclick="verifyAnswer()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-bold text-sm transition shadow-lg shadow-cyan-500/20">
+                            VERIFY & CLAIM
+                        </button>
+                    </div>
+                    <div id="answer-feedback" class="hidden p-3 rounded-xl border text-xs font-mono flex items-center justify-between"></div>
+                </div>
+
+                <div class="text-xs font-mono text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between">
+                    <span><i class="fa-solid fa-code-branch text-purple-400 mr-1"></i> UNLOCKS PATH TO:</span>
+                    <span id="modal-unlocks" class="text-slate-200 font-bold">Nodes 3, 4</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strategy Intel Overview Modal -->
+    <div id="intel-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-3xl rounded-2xl border border-indigo-500/30 overflow-hidden shadow-2xl p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-orbitron font-bold text-lg text-indigo-300 flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice"></i> ROUND 1 STRATEGY INTEL SHEET (2-START MODEL)
+                </h3>
+                <button onclick="toggleIntelSheet()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2">
+                <p>• **Auto-Starting Timers**: Question timers start counting down immediately upon opening any node question.</p>
+                <p>• **Bulk JSON Import/Export**: Instantly upload custom question sets or back up your current question database via the Admin panel.</p>
+                <p>• **Dynamic Branching**: Admins can connect or disconnect any node path in real-time via the Admin & Link Manager.</p>
+            </div>
+            <div class="text-right">
+                <button onclick="toggleIntelSheet()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-orbitron text-xs font-bold">Close Intel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        let questionsData = [
+            { id: 1, start: true, title: "Node 1 (Start 1)", route: "Route Alpha", diff: 2, points: 50, time: 45, text: "If a train travels at 60 km/h for 2.5 hours, how far does it travel in total?", answer: "150", unlock: [3, 4], bonus: false },
+            { id: 2, start: true, title: "Node 2 (Start 2)", route: "Route Beta", diff: 2, points: 50, time: 45, text: "Solve for x: 3x + 12 = 39.", answer: "9", unlock: [4, 5], bonus: false },
+            { id: 3, start: false, title: "Node 3", route: "Route Alpha", diff: 3, points: 100, time: 60, text: "What is the next number in the sequence: 2, 6, 12, 20, 30, ___?", answer: "42", unlock: [6, 7], bonus: false },
+            { id: 4, start: false, title: "Node 4", route: "Central Hub", diff: 3, points: 100, time: 60, text: "Area of a right triangle with base 12 cm and height 5 cm?", answer: "30", unlock: [7, 8], bonus: false },
+            { id: 5, start: false, title: "Node 5", route: "Route Beta", diff: 3, points: 100, time: 60, text: "Evaluate: 2^5 - 3^2.", answer: "23", unlock: [8, 9], bonus: false },
+            { id: 6, start: false, title: "Node 6", route: "Route Alpha", diff: 4, points: 150, time: 75, text: "If 15% of a number is 45, what is the whole number?", answer: "300", unlock: [10], bonus: false },
+            { id: 7, start: false, title: "Node 7", route: "Central Hub", diff: 4, points: 150, time: 75, text: "Probability of rolling a total sum of 8 with two fair 6-sided dice? (Fraction)", answer: "5/36", unlock: [10, 11], bonus: false },
+            { id: 8, start: false, title: "Node 8", route: "Central Hub", diff: 4, points: 150, time: 75, text: "Smallest positive integer divisible by 6, 8, and 15 (LCM)?", answer: "120", unlock: [11, 12], bonus: false },
+            { id: 9, start: false, title: "Node 9", route: "Route Beta", diff: 4, points: 150, time: 75, text: "Perimeter of rectangle with area 48 cm² and length 12 cm?", answer: "28", unlock: [12, 13], bonus: false },
+            { id: 10, start: false, title: "Node 10", route: "Route Alpha", diff: 5, points: 200, time: 90, text: "Sum of internal angles of a regular hexagon in degrees?", answer: "720", unlock: [14], bonus: false },
+            { id: 11, start: false, title: "Node 11", route: "Central Hub", diff: 5, points: 200, time: 90, text: "Hypotenuse of right triangle with legs 9 cm and 12 cm?", answer: "15", unlock: [14, 15], bonus: false },
+            { id: 12, start: false, title: "Node 12", route: "Central Hub", diff: 5, points: 200, time: 90, text: "Solve system: x + y = 10, 2x - y = 8. Value of x?", answer: "6", unlock: [15, 16], bonus: false },
+            { id: 13, start: false, title: "Node 13", route: "Route Beta", diff: 5, points: 200, time: 90, text: "How many distinct ways can the letters in 'LEVEL' be arranged?", answer: "30", unlock: [16], bonus: false },
+            { id: 14, start: false, title: "Node 14 [Bonus Core]", route: "Endpoint Alpha", diff: 10, points: 500, time: 180, text: "HIDDEN BONUS NODE! Roots α, β of x² - 5x + 3 = 0. Evaluate α³ + β³.", answer: "80", unlock: [], bonus: true },
+            { id: 15, start: false, title: "Node 15 [Bonus Core]", route: "Endpoint Center", diff: 10, points: 600, time: 180, text: "FINAL MAZE ENDPOINT! What is the units digit of 7^2026?", answer: "9", unlock: [], bonus: true },
+            { id: 16, start: false, title: "Node 16 [Bonus Core]", route: "Endpoint Beta", diff: 10, points: 500, time: 180, text: "HIDDEN BONUS NODE! Dot product of vectors <3, -2, 4> and <1, 5, -2>?", answer: "-15", unlock: [], bonus: true }
+        ];
+
+        let currentActiveTeam = 'alpha';
+        let currentSelectedNodeId = null;
+        let timerInterval = null;
+        let secondsRemaining = 0;
+
+        const teamColors = {
+            alpha: { name: 'Alpha', hex: '#00f0ff', glow: 'glow-alpha', border: 'team-border-alpha', bg: 'bg-cyan-500' },
+            bravo: { name: 'Bravo', hex: '#ff0055', glow: 'glow-bravo', border: 'team-border-bravo', bg: 'bg-pink-500' },
+            charlie: { name: 'Charlie', hex: '#00ff66', glow: 'glow-charlie', border: 'team-border-charlie', bg: 'bg-emerald-500' },
+            delta: { name: 'Delta', hex: '#ffbb00', glow: 'glow-delta', border: 'team-border-delta', bg: 'bg-amber-500' }
+        };
+
+        let gameState = {
+            teams: {
+                alpha: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                bravo: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                charlie: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                delta: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 }
+            },
+            nodeOwners: {}
+        };
+
+        const nodePositions = {};
+
+        function generateNodePositions() {
+            const canvasW = 850;
+            let startNodes = questionsData.filter(q => q.start);
+            let otherNodes = questionsData.filter(q => !q.start);
+
+            startNodes.forEach((q, idx) => {
+                nodePositions[q.id] = { x: 300 + (idx * 250), y: 60 };
+            });
+
+            let tierY = 160;
+            let index = 0;
+            
+            for(let t = 0; t < 10; t++) {
+                let batch = otherNodes.slice(index, index + 4);
+                if (batch.length === 0) break;
+                let spacing = canvasW / (batch.length + 1);
+                batch.forEach((q, idx) => {
+                    nodePositions[q.id] = { x: Math.round(spacing * (idx + 1)), y: tierY };
+                });
+                tierY += 95;
+                index += 4;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            generateNodePositions();
+            renderScoreboard();
+            renderTree();
+        });
+
+        function switchView(viewName) {
+            const viewGame = document.getElementById('view-game');
+            const viewAdmin = document.getElementById('view-admin');
+            const btnGame = document.getElementById('nav-btn-game');
+            const btnAdmin = document.getElementById('nav-btn-admin');
+
+            if (viewName === 'game') {
+                viewGame.classList.remove('hidden');
+                viewAdmin.classList.add('hidden');
+                btnGame.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 flex items-center gap-1.5";
+                btnAdmin.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition text-slate-400 hover:text-white flex items-center gap-1.5";
+                generateNodePositions();
+                renderTree();
+            } else {
+                viewGame.classList.add('hidden');
+                viewAdmin.classList.remove('hidden');
+                btnAdmin.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition bg-indigo-500/20 text-indigo-400 border border-indigo-500/50 flex items-center gap-1.5";
+                btnGame.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition text-slate-400 hover:text-white flex items-center gap-1.5";
+                renderAdminTable();
+            }
+        }
+
+        // --- ADMIN TABLE & CRUD LOGIC ---
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '';
+
+            questionsData.forEach(q => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/60 transition border-b border-slate-800/80";
+                tr.innerHTML = `
+                    <td class="p-3 font-orbitron font-bold text-cyan-400">N${q.id}</td>
+                    <td class="p-3"><input type="checkbox" ${q.start ? 'checked' : ''} onchange="updateQuestionField(${q.id}, 'start', this.checked)" class="w-4 h-4 accent-cyan-500 cursor-pointer"></td>
+                    <td class="p-3"><input type="text" value="${q.route}" onchange="updateQuestionField(${q.id}, 'route', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-28 font-mono focus:border-cyan-500 focus:outline-none"></td>
+                    <td class="p-3"><input type="number" min="1" max="10" value="${q.diff}" onchange="updateQuestionField(${q.id}, 'diff', parseInt(this.value))" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-amber-400 w-16 font-mono text-center focus:border-cyan-500 focus:outline-none"></td>
+                    <td class="p-3"><input type="number" value="${q.time}" onchange="updateQuestionField(${q.id}, 'time', parseInt(this.value))" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-emerald-400 w-16 font-mono text-center focus:border-cyan-500 focus:outline-none"></td>
+                    <td class="p-3"><input type="number" value="${q.points}" onchange="updateQuestionField(${q.id}, 'points', parseInt(this.value))" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-cyan-400 w-20 font-mono text-center focus:border-cyan-500 focus:outline-none"></td>
+                    <td class="p-3 space-y-1">
+                        <textarea onchange="updateQuestionField(${q.id}, 'text', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 w-full font-mono resize-y h-10 focus:border-cyan-500 focus:outline-none">${q.text}</textarea>
+                        <div class="text-[10px] text-purple-400 font-mono">Unlocks: [${q.unlock.join(', ')}]</div>
+                    </td>
+                    <td class="p-3"><input type="text" value="${q.answer}" onchange="updateQuestionField(${q.id}, 'answer', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-emerald-300 w-32 font-mono focus:border-cyan-500 focus:outline-none"></td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteQuestion(${q.id})" class="px-2.5 py-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-xs font-bold transition"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateQuestionField(id, field, val) {
+            const q = questionsData.find(item => item.id === id);
+            if (q) q[field] = val;
+        }
+
+        function addNewQuestion() {
+            const maxId = questionsData.length > 0 ? Math.max(...questionsData.map(q => q.id)) : 0;
+            const newId = maxId + 1;
+            questionsData.push({
+                id: newId,
+                start: false,
+                title: `Node ${newId}`,
+                route: "Custom Route",
+                diff: 3,
+                points: 100,
+                time: 60,
+                text: "New custom question text here...",
+                answer: "Answer",
+                unlock: [],
+                bonus: false
+            });
+            renderAdminTable();
+        }
+
+        function addNewQuestionModal() {
+            addNewQuestion();
+            alert("New question added to the bottom of the database!");
+        }
+
+        function deleteQuestion(id) {
+            if (confirm(`Are you sure you want to delete Question N${id}?`)) {
+                questionsData = questionsData.filter(q => q.id !== id);
+                questionsData.forEach(q => {
+                    q.unlock = q.unlock.filter(uId => uId !== id);
+                });
+                renderAdminTable();
+            }
+        }
+
+        // --- BULK JSON IMPORT / EXPORT ---
+        function exportQuestionsJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(questionsData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "maze_runner_questions_master.json");
+            dlAnchorElem.click();
+        }
+
+        function importQuestionsJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        questionsData = imported;
+                        renderAdminTable();
+                        generateNodePositions();
+                        renderScoreboard();
+                        renderTree();
+                        alert(`Successfully imported ${questionsData.length} questions in bulk!`);
+                    } else {
+                        alert("Invalid format: JSON file must contain an array of questions.");
+                    }
+                } catch (err) {
+                    alert("Error parsing JSON file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; 
+        }
+
+        // --- MAKE & BREAK LINKS (BRANCHING MANAGER) ---
+        function makePathLink() {
+            const fromId = parseInt(document.getElementById('link-from').value);
+            const toId = parseInt(document.getElementById('link-to').value);
+
+            if (!fromId || !toId) {
+                alert("Please enter valid Node IDs.");
+                return;
+            }
+
+            const parent = questionsData.find(q => q.id === fromId);
+            const child = questionsData.find(q => q.id === toId);
+
+            if (!parent || !child) {
+                alert("One or both Node IDs do not exist in the questions database.");
+                return;
+            }
+
+            if (!parent.unlock.includes(toId)) {
+                parent.unlock.push(toId);
+                alert(`Successfully linked Node ${fromId} -> Node ${toId}!`);
+                renderAdminTable();
+            } else {
+                alert(`Link between Node ${fromId} and Node ${toId} already exists.`);
+            }
+        }
+
+        function breakPathLink() {
+            const fromId = parseInt(document.getElementById('link-from').value);
+            const toId = parseInt(document.getElementById('link-to').value);
+
+            const parent = questionsData.find(q => q.id === fromId);
+            if (parent && parent.unlock.includes(toId)) {
+                parent.unlock = parent.unlock.filter(id => id !== toId);
+                alert(`Successfully broke link Node ${fromId} -> Node ${toId}!`);
+                renderAdminTable();
+            } else {
+                alert("Link not found.");
+            }
+        }
+
+        // --- GAME ENGINE & UI RENDERING ---
+        function setActiveTeam(teamKey) {
+            currentActiveTeam = teamKey;
+            
+            Object.keys(teamColors).forEach(key => {
+                const btn = document.getElementById(`btn-team-${key}`);
+                if (key === teamKey) {
+                    btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 bg-${key === 'alpha' ? 'cyan-500/20 text-cyan-400' : key === 'bravo' ? 'pink-500/20 text-pink-400' : key === 'charlie' ? 'emerald-500/20 text-emerald-400' : 'amber-500/20 text-amber-400'} border border-current`;
+                } else {
+                    btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold font-orbitron transition flex items-center gap-2 text-slate-400 hover:text-white`;
+                }
+            });
+
+            const team = gameState.teams[teamKey];
+            const meta = teamColors[teamKey];
+
+            document.getElementById('active-team-badge').innerText = meta.name.toUpperCase();
+            document.getElementById('active-team-badge').className = `px-2 py-0.5 rounded text-[10px] font-orbitron font-bold bg-${meta.bg}/20 text-${meta.name.toLowerCase()} border ${meta.border}`;
+            
+            document.getElementById('active-streak-val').innerText = `${team.multiplier.toFixed(2)}x`;
+            document.getElementById('active-streak-count').innerText = `${team.streak} Consecutive`;
+            document.getElementById('active-nodes-count').innerText = team.clearedNodes.length;
+            document.getElementById('active-time-bonus').innerText = `+${team.timeBonus} pts`;
+
+            for(let i = 1; i <= 6; i++) {
+                const dot = document.getElementById(`st-${i}`);
+                if(i <= team.streak) {
+                    dot.className = `h-1.5 rounded-full ${meta.bg}`;
+                } else {
+                    dot.className = `h-1.5 rounded-full bg-slate-800`;
+                }
+            }
+
+            renderTree();
+        }
+
+        function renderScoreboard() {
+            const container = document.getElementById('scoreboard-list');
+            container.innerHTML = '';
+
+            const sorted = Object.keys(gameState.teams).sort((a, b) => gameState.teams[b].score - gameState.teams[a].score);
+
+            sorted.forEach((teamKey, rank) => {
+                const team = gameState.teams[teamKey];
+                const meta = teamColors[teamKey];
+
+                const card = document.createElement('div');
+                card.className = `p-2.5 rounded-xl border ${teamKey === currentActiveTeam ? meta.border + ' bg-slate-900/90' : 'border-slate-800 bg-slate-900/40'} flex items-center justify-between transition`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-orbitron font-extrabold text-xs text-slate-500">#${rank + 1}</span>
+                        <div class="w-3 h-3 rounded-full ${meta.bg}"></div>
+                        <div>
+                            <div class="font-orbitron font-bold text-xs text-slate-200">TEAM ${meta.name.toUpperCase()}</div>
+                            <div class="text-[10px] font-mono text-slate-400">${team.clearedNodes.length} nodes • ${team.multiplier.toFixed(2)}x</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-orbitron font-extrabold text-sm text-cyan-400">${team.score}</div>
+                        <div class="text-[9px] font-mono text-slate-500">PTS</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('total-nodes-badge').innerText = `${questionsData.length} NODES`;
+        }
+
+        function isNodeUnlocked(nodeId) {
+            const q = questionsData.find(item => item.id === nodeId);
+            if (!q) return false;
+            if (q.start) return true;
+            const teamCleared = gameState.teams[currentActiveTeam].clearedNodes;
+            return questionsData.some(parent => parent.unlock.includes(nodeId) && teamCleared.includes(parent.id));
+        }
+
+        function renderTree() {
+            const svgPathsGroup = document.getElementById('svg-paths');
+            const nodesLayer = document.getElementById('tree-nodes-layer');
+
+            svgPathsGroup.innerHTML = '';
+            nodesLayer.innerHTML = '';
+
+            questionsData.forEach(q => {
+                const parentPos = nodePositions[q.id];
+                if (!parentPos) return;
+
+                q.unlock.forEach(targetId => {
+                    const childPos = nodePositions[targetId];
+                    if (!childPos) return;
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', parentPos.x);
+                    line.setAttribute('y1', parentPos.y);
+                    line.setAttribute('x2', childPos.x);
+                    line.setAttribute('y2', childPos.y);
+
+                    const owner = gameState.nodeOwners[q.id];
+                    if (owner) {
+                        line.setAttribute('stroke', teamColors[owner].hex);
+                        line.setAttribute('stroke-width', '2.5');
+                        line.setAttribute('class', 'path-line path-active');
+                        line.setAttribute('filter', 'url(#glow)');
+                    } else {
+                        line.setAttribute('stroke', '#334155');
+                        line.setAttribute('stroke-width', '1.5');
+                        line.setAttribute('stroke-dasharray', '3 3');
+                        line.setAttribute('class', 'path-line');
+                    }
+
+                    svgPathsGroup.appendChild(line);
+                });
+            });
+
+            questionsData.forEach(q => {
+                const pos = nodePositions[q.id];
+                if (!pos) return;
+
+                const nodeEl = document.createElement('div');
+                nodeEl.style.left = `${pos.x - 18}px`;
+                nodeEl.style.top = `${pos.y - 18}px`;
+                nodeEl.style.position = 'absolute';
+
+                const owner = gameState.nodeOwners[q.id];
+                const unlocked = isNodeUnlocked(q.id);
+
+                let nodeStyle = 'bg-slate-900 border-slate-700 text-slate-500';
+                let badgeContent = q.id;
+
+                if (owner) {
+                    const teamMeta = teamColors[owner];
+                    nodeStyle = `${teamMeta.bg} border-white text-slate-950 font-black ${teamMeta.glow}`;
+                } else if (unlocked) {
+                    if (q.start) {
+                        nodeStyle = 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold animate-pulse';
+                        badgeContent = `S${q.id}`;
+                    } else if (q.bonus) {
+                        nodeStyle = 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold';
+                        badgeContent = `<i class="fa-solid fa-star text-[10px]"></i>`;
+                    } else {
+                        nodeStyle = 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-semibold';
+                    }
+                }
+
+                nodeEl.className = `w-9 h-9 rounded-full border-2 flex items-center justify-center font-orbitron text-xs transition-all duration-300 cursor-pointer hover:scale-125 z-10 ${nodeStyle}`;
+                nodeEl.innerHTML = badgeContent;
+                nodeEl.onclick = () => openNodeModal(q.id);
+
+                nodesLayer.appendChild(nodeEl);
+            });
+        }
+
+        function openNodeModal(nodeId) {
+            currentSelectedNodeId = nodeId;
+            const q = questionsData.find(item => item.id === nodeId);
+            if (!q) return;
+
+            const teamMeta = teamColors[currentActiveTeam];
+
+            document.getElementById('modal-node-badge').innerText = `N${q.id}`;
+            document.getElementById('modal-node-title').innerText = q.title || `Node ${q.id}`;
+            document.getElementById('modal-node-route').innerText = `${q.route} • Difficulty Scale ${q.diff}/10`;
+
+            document.getElementById('modal-diff').innerText = `${q.diff} / 10`;
+            document.getElementById('modal-pts').innerText = q.bonus ? "HIDDEN PAYLOAD" : `${q.points} Pts`;
+            document.getElementById('modal-timer-disp').innerText = `${q.time}s`;
+
+            document.getElementById('modal-payload-tag').innerText = q.bonus ? "HIGH REWARD BONUS NODE" : "STANDARD NODE";
+            document.getElementById('modal-payload-tag').className = q.bonus ? "text-[10px] font-mono bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-700" : "text-[10px] font-mono bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800";
+
+            document.getElementById('modal-question-text').innerText = q.text;
+            document.getElementById('modal-team-name').innerText = teamMeta.name.toUpperCase();
+            document.getElementById('modal-team-name').className = `text-${teamMeta.name.toLowerCase()} font-bold uppercase`;
+
+            document.getElementById('modal-unlocks').innerText = q.unlock.length > 0 ? `Nodes ${q.unlock.join(', ')}` : "Final Maze Endpoint";
+
+            document.getElementById('user-answer-input').value = '';
+            const feedback = document.getElementById('answer-feedback');
+            feedback.className = 'hidden';
+
+            // --- AUTO-START TIMER ON OPEN ---
+            secondsRemaining = q.time;
+            document.getElementById('timer-count').innerText = `${secondsRemaining}s`;
+            clearInterval(timerInterval);
+            
+            const timerBtn = document.getElementById('btn-timer-toggle');
+            timerBtn.innerHTML = `<i class="fa-solid fa-pause"></i> PAUSE TIMER`;
+
+            timerInterval = setInterval(() => {
+                secondsRemaining--;
+                document.getElementById('timer-count').innerText = `${secondsRemaining}s`;
+                if (secondsRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    document.getElementById('timer-count').innerText = `0s`;
+                    timerBtn.innerHTML = `<i class="fa-solid fa-play"></i> START TIMER`;
+                }
+            }, 1000);
+
+            document.getElementById('node-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            clearInterval(timerInterval);
+            document.getElementById('node-modal').classList.add('hidden');
+        }
+
+        function toggleNodeTimer() {
+            const btn = document.getElementById('btn-timer-toggle');
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                btn.innerHTML = `<i class="fa-solid fa-play"></i> RESUME TIMER`;
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-pause"></i> PAUSE TIMER`;
+                timerInterval = setInterval(() => {
+                    secondsRemaining--;
+                    document.getElementById('timer-count').innerText = `${secondsRemaining}s`;
+                    if (secondsRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        document.getElementById('timer-count').innerText = `0s`;
+                        btn.innerHTML = `<i class="fa-solid fa-play"></i> START TIMER`;
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetNodeTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            const q = questionsData.find(item => item.id === currentSelectedNodeId);
+            secondsRemaining = q ? q.time : 45;
+            document.getElementById('timer-count').innerText = `${secondsRemaining}s`;
+            
+            // Restart automatically on reset as well
+            const btn = document.getElementById('btn-timer-toggle');
+            btn.innerHTML = `<i class="fa-solid fa-pause"></i> PAUSE TIMER`;
+            timerInterval = setInterval(() => {
+                secondsRemaining--;
+                document.getElementById('timer-count').innerText = `${secondsRemaining}s`;
+                if (secondsRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    document.getElementById('timer-count').innerText = `0s`;
+                    btn.innerHTML = `<i class="fa-solid fa-play"></i> START TIMER`;
+                }
+            }, 1000);
+        }
+
+        function verifyAnswer() {
+            const q = questionsData.find(item => item.id === currentSelectedNodeId);
+            const inputVal = document.getElementById('user-answer-input').value.trim().toUpperCase();
+            const feedback = document.getElementById('answer-feedback');
+            
+            if (!inputVal) {
+                feedback.className = "p-3 rounded-xl bg-amber-950/80 border border-amber-700 text-amber-300 text-xs font-mono block";
+                feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Please enter an answer first.`;
+                return;
+            }
+
+            const isCorrect = inputVal === q.answer.toUpperCase();
+            const activeTeamObj = gameState.teams[currentActiveTeam];
+
+            if (isCorrect) {
+                clearInterval(timerInterval);
+
+                activeTeamObj.streak += 1;
+                let multiplier = 1.0;
+                if (activeTeamObj.streak === 4) multiplier = 1.25;
+                else if (activeTeamObj.streak === 5) multiplier = 1.50;
+                else if (activeTeamObj.streak >= 6) multiplier = 1.75 + ((activeTeamObj.streak - 6) * 0.25);
+                activeTeamObj.multiplier = multiplier;
+
+                const speedBonus = Math.max(0, secondsRemaining);
+                const awardedPoints = Math.round((q.points * multiplier) + speedBonus);
+
+                activeTeamObj.score += awardedPoints;
+                activeTeamObj.timeBonus += speedBonus;
+
+                if (!activeTeamObj.clearedNodes.includes(q.id)) {
+                    activeTeamObj.clearedNodes.push(q.id);
+                }
+
+                gameState.nodeOwners[q.id] = currentActiveTeam;
+
+                feedback.className = "p-3 rounded-xl bg-emerald-950/90 border border-emerald-500 text-emerald-300 text-xs font-mono block space-y-1";
+                feedback.innerHTML = `
+                    <div class="font-bold flex items-center justify-between">
+                        <span><i class="fa-solid fa-circle-check text-emerald-400"></i> CORRECT ANSWER!</span>
+                        <span>+${awardedPoints} PTS</span>
+                    </div>
+                    <div class="text-[11px] text-emerald-400/80">Base: ${q.points} | Multiplier: ${multiplier}x | Speed Bonus: +${speedBonus} pts</div>
+                `;
+
+                renderScoreboard();
+                setActiveTeam(currentActiveTeam);
+
+                setTimeout(() => {
+                    closeModal();
+                }, 1800);
+
+            } else {
+                activeTeamObj.streak = 0;
+                activeTeamObj.multiplier = 1.0;
+
+                feedback.className = "p-3 rounded-xl bg-pink-950/90 border border-pink-500 text-pink-300 text-xs font-mono block space-y-1";
+                feedback.innerHTML = `
+                    <div class="font-bold"><i class="fa-solid fa-circle-xmark text-pink-400"></i> INCORRECT ANSWER!</div>
+                    <div class="text-[11px] text-pink-300/80">Streak Multiplier reset back to 1.0x baseline. Try again!</div>
+                `;
+
+                renderScoreboard();
+                setActiveTeam(currentActiveTeam);
+            }
+        }
+
+        function toggleIntelSheet() {
+            const modal = document.getElementById('intel-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function resetGameMatch() {
+            gameState = {
+                teams: {
+                    alpha: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                    bravo: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                    charlie: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 },
+                    delta: { score: 0, streak: 0, multiplier: 1.0, clearedNodes: [], timeBonus: 0 }
+                },
+                nodeOwners: {}
+            };
+            renderScoreboard();
+            setActiveTeam('alpha');
+        }
+    </script>
+</body>
+</html>
